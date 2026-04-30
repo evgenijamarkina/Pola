@@ -1,0 +1,103 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import json
+from datetime import datetime
+
+class TrainingPlanner:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Training Planner")
+
+        self.trainings = []  # Список для хранения тренировок
+        self.create_widgets()
+
+        # Загрузить данные из JSON при запуске
+        self.load_data()
+
+    def create_widgets(self):
+        # Поля ввода
+        ttk.Label(self.root, text="Дата (ГГГГ-ММ-ДД):").grid(row=0, column=0)
+        self.date_entry = ttk.Entry(self.root)
+        self.date_entry.grid(row=0, column=1)
+
+        ttk.Label(self.root, text="Тип тренировки:").grid(row=1, column=0)
+        self.type_entry = ttk.Entry(self.root)
+        self.type_entry.grid(row=1, column=1)
+
+        ttk.Label(self.root, text="Длительность (мин):").grid(row=2, column=0)
+        self.duration_entry = ttk.Entry(self.root)
+        self.duration_entry.grid(row=2, column=1)
+
+        # Кнопка добавления тренировки
+        ttk.Button(self.root, text="Добавить тренировку", command=self.add_training).grid(row=3, columnspan=2)
+
+        # Таблица для отображения тренировок
+        self.training_tree = ttk.Treeview(self.root, columns=("Date", "Type", "Duration"), show='headings')
+        self.training_tree.heading("Date", text="Дата")
+        self.training_tree.heading("Type", text="Тип тренировки")
+        self.training_tree.heading("Duration", text="Длительность")
+        self.training_tree.grid(row=4, columnspan=2)
+
+        # Фильтры
+        ttk.Label(self.root, text="Фильтр по типу:").grid(row=5, column=0)
+        self.filter_type_entry = ttk.Entry(self.root)
+        self.filter_type_entry.grid(row=5, column=1)
+
+        ttk.Button(self.root, text="Фильтровать", command=self.filter_trainings).grid(row=6, columnspan=2)
+
+    def add_training(self):
+        date_str = self.date_entry.get()
+        training_type = self.type_entry.get()
+        duration_str = self.duration_entry.get()
+
+        try:
+            # Проверка даты
+            date = datetime.strptime(date_str, "%Y-%m-%d")
+            # Проверка длительности
+            duration = int(duration_str)
+            if duration <= 0:
+                raise ValueError("Длительность должна быть положительным числом.")
+
+            training = {"date": date_str, "type": training_type, "duration": duration}
+            self.trainings.append(training)
+            self.update_training_table()
+            self.save_data()
+
+            # Очистить поля
+            self.date_entry.delete(0, tk.END)
+            self.type_entry.delete(0, tk.END)
+            self.duration_entry.delete(0, tk.END)
+
+        except ValueError as ve:
+            messagebox.showerror("Ошибка ввода", str(ve))
+
+    def update_training_table(self):
+        # Очистка таблицы перед обновлением
+        for item in self.training_tree.get_children():
+            self.training_tree.delete(item)
+
+        for training in self.trainings:
+            self.training_tree.insert('', 'end', values=(training["date"], training["type"], training["duration"]))
+
+    def filter_trainings(self):
+        filter_type = self.filter_type_entry.get()
+        filtered = [training for training in self.trainings if training["type"] == filter_type]
+        self.training_tree.delete(*self.training_tree.get_children())  # Очистить таблицу
+
+        for training in filtered:
+            self.training_tree.insert('', 'end', values=(training["date"], training["type"], training["duration"]))
+
+    def save_data(self):
+        with open("trainings.json", "w") as f:
+            json.dump(self.trainings, f)
+
+    def load_data(self):
+        try:
+            with open("trainings.json", "r") as f:
+                self.trainings = json.load(f)
+            self.update_training_table()
+        except FileNotFoundError:
+            pass  # Файл не найден, ничего не загружаем
+
+if __name__ == "__main__":
+    root = tk.Tk
